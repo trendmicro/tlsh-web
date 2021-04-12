@@ -42,12 +42,13 @@ They write:
 <BLOCKQUOTE>
 "Last, counting features in a limited set of counters (as TLSH or Nilsimsa do) provokes the loss of the order between features,
 which allows for the input rearranging without affecting to the similarity score.<BR>
-This issue is partially solved by considering feature intersection (processed feature- aware).
+This issue is partially solved by considering feature intersection (processed feature-aware).<BR>
+The last limitation is the solution less vulnerable to attacks..."
 </BLOCKQUOTE>
 TLSH and Nilsimsa indeed have the property that rearranging functions has limited impact on the score
 (this was experimently tested, for example in Table 4 of
 <A HREF=https://documents.trendmicro.com/assets/wp/wp-using-randomization-to-attack-similarity-digests.pdf>this article</A>).<BR>
-We suggest that this is a desirable property:
+We will assert that this is not a limitation, but rather a requirement for security and malware applications:
 <BLOCKQUOTE>
 	<B>Desireable Property for Fuzzy Hashes:</B> Code which is re-ordered versions of some original file should be scored as being similar.
 </BLOCKQUOTE>
