@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<HTML lang="en" xml:lang="en">
+<HEAD>
+<META charset="UTF-8" />
+<META http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<TITLE>TLSH - Blog</TITLE>
+<!-- see https://www.w3schools.com/html/html_css.asp -->
+<link rel="stylesheet" href="style.css">
+</HEAD>
+
+<BODY>
+<HEADER>
+<NAV>
+<DIV class="navbar">
+<UL class="navbar">
+<LI class="navbar"><A			href="index.html">Home</A></LI>
+<LI class="navbar"><A			href="usage.html">Usage</A></LI>
+<LI class="navbar"><A               	href="papers.html">Technical Overview</A></LI>
+<LI class="navbar"><A			href="https://github.com/trendmicro/tlsh">Source Code</A></LI>
+<LI class="navbar"><A			href="https://github.com/trendmicro/tlsh/releases">Download</A></LI>
+<LI class="navbar"><A class="active"	href="blog.html">Blog</A></LI>
+</UL>
+</DIV>
+</NAV>
+</HEADER>
+<!-- ------------------------------------- END HEADER ------------------------------------- -->
+
+<BR>
+<BR>
+<H1 id="title">TLSH - Blog</H1>
+<DIV class="content">
+<H2>Notes on Function Re-ordering</H2>
+by Jonathan Oliver <BR>
+13 / April / 2021.
+<P>
+A recent article by Martin-Perez et al. called
+<A HREF=https://www.sciencedirect.com/science/article/pii/S2666281721000172>"Bringing order to approximate matching: Classification and attacks on similarity digest algorithms"</A>
+considered the issue of function re-ordering.<BR>
+They write:
+<BLOCKQUOTE>
+"Last, counting features in a limited set of counters (as TLSH or Nilsimsa do) provokes the loss of the order between features,
+which allows for the input rearranging without affecting to the similarity score.<BR>
+This issue is partially solved by considering feature intersection (processed feature- aware).
+</BLOCKQUOTE>
+TLSH and Nilsimsa indeed have the property that rearranging functions has limited impact on the score
+(this was experimently tested, for example in Table 4 of
+<A HREF=https://documents.trendmicro.com/assets/wp/wp-using-randomization-to-attack-similarity-digests.pdf>this article</A>).<BR>
+We suggest that this is a desirable property:
+<BLOCKQUOTE>
+	<B>Desireable Property for Fuzzy Hashes:</B> Code which is re-ordered versions of some original file should be scored as being similar.
+</BLOCKQUOTE>
+<P>
+Function re-ordering is a known obfuscation technique used by malware authors for more than a decade
+(<A HREF=https://www.blackhat.com/presentations/bh-usa-08/Hosmer/BH_US_08_Hosmer_Polymorphic_Malware.pdf>see slide 9</A>).<BR>
+Function re-ordering is a straight forward obfuscation technique to use because re-ordering the functions can be done with very low chance
+of breaking the code.
+<P>
+Code with N functions can be re-written with re-ordered functions in approximately N! ways.<BR>
+So if a fuzzy hash is not resistant to function re-ordering then it has given attackers an easy to exploit attack surface which has
+the potential to generate a never ending list of malware variants.
+
+<!-- ------------------------------------- START FOOTER ------------------------------------- -->
+<DIV class="footer">
+Copyright &copy; 2013-2021 TrendMicro	<BR>
+Last updated on 13/04/2021.
+</DIV>
+</BODY>
+</HTML>
