@@ -5,7 +5,7 @@
 <META http-equiv="Content-Type" content="text/html; charset=UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
-<TITLE>TLSH - Technical Papers</TITLE>
+<TITLE>TLSH - Technical Overview</TITLE>
 <!-- see https://www.w3schools.com/html/html_css.asp -->
 <link rel="stylesheet" href="style.css">
 </HEAD>
@@ -17,7 +17,7 @@
 <UL class="navbar">
 <LI class="navbar"><A			href="index.html">Home</A></LI>
 <LI class="navbar"><A			href="usage.html">Usage</A></LI>
-<LI class="navbar"><A class="active"	href="papers.html">Technical Papers</A></LI>
+<LI class="navbar"><A class="active"	href="papers.html">Technical Overview</A></LI>
 <LI class="navbar"><A			href="https://github.com/trendmicro/tlsh">Source Code</A></LI>
 <LI class="navbar"><A			href="https://github.com/trendmicro/tlsh/releases">Download</A></LI>
 </UL>
@@ -28,9 +28,193 @@
 
 <BR>
 <BR>
-<H1 id="title">TLSH - Papers and Other Technical Content</H1>
+<H1 id="title">TLSH - Technical Overview</H1>
 <DIV class="content">
-<H2>Summary of Papers</H2>
+by Jonathan Oliver <BR>
+12 / April / 2021.
+
+<H2>Introduction</H2>
+
+<H3>Intended Audience</H3>
+In this page, we explain the technical details behind TLSH.
+We hope that this content is useful to researchers / academics and security experts who wish to understand the
+technical details for TLSH.
+In addition, we offer technical rationales for the design decisions in TLSH.
+
+<H3>List of Papers/Presentations</H3>
+
+This overview is based on content from the following conference presentations:
+<TABLE BORDER=1>
+<TR>
+	<TD> Title </TD> <TD> Conference </TD> <TD> Topic </TD>
+</TR>
+<TR>
+	<TD>
+		<A HREF=https://documents.trendmicro.com/assets/wp/wp-locality-sensitive-hash.pdf>TLSH--a locality sensitive hash</A>
+	</TD>
+	<TD> CTC 2013 </TD>
+	<TD>
+		Defines TLSH. Including (i) How to calculate TLSH for a file and
+		(ii) How to calculate the distance between two TLSH digests.
+	</TD>
+</TR>
+<TR>
+	<TD>
+		<A HREF=https://documents.trendmicro.com/assets/wp/wp-using-randomization-to-attack-similarity-digests.pdf>Using randomization to attack similarity digests</A>
+	</TD>
+	<TD> ATIS 2014 </TD>
+	<TD>
+		Does experiments attacking TLSH, SSDEEP and SDHASH.
+	</TD>
+</TR>
+<TR>
+	<TD>
+		<A HREF=papersDir/COINS_2020_camera_ready.pdf>HAC-T and fast search for similarity in security</A>
+	</TD>
+	<TD> COINS 2020 </TD>
+	<TD>
+		Considers how you do Nearest Neighbour search for matches to a TLSH digest. <BR>
+		Uses the Nearest Neighbour searech for a fast clustering algorithm (HAC-T).
+	</TD>
+</TR>
+<TR>
+	<TD>
+		<A HREF=papersDir/ISI_2020_final.pdf>Scalable Malware Clustering using Multi-Stage Tree Parallelization</A>
+	</TD>
+	<TD> ISI 2020 </TD>
+	<TD>
+		Scalable Clustering of TLSH digests.
+	</TD>
+</TR>
+<TR>
+	<TD>
+		<A HREF=papersDir/Design_TLSH_2021.pdf>Designing the Elements of a Fuzzy Hashing Scheme</A>
+	</TD>
+	<TD> submitted </TD>
+	<TD>
+		Explains the design of TLSH focussing on why TLSH uses the parameters it does.
+	</TD>
+</TR>
+</TABLE>
+
+<H2>TSLH Technical Overview</H2>
+
+TLSH is a fuzzy hash.
+At first glance it would appear to be similar to other fuzzy hashes like SSDEEP and SDHASH.
+When selecting a fuzzy hash, some of the criteria that should be considered are:
+<UL>
+	<LI> 1. Accuracy at identifying similar content,
+	<LI> 2. Robustness to attack,
+	<LI> 3. Time to calculate digest,
+	<LI> 4. Time to perform a nearest neighbor search,
+	<LI> 5. Time and suitability for large scale clustering, and
+	<LI> 6. Size of the digest (fixed size is preferred). 
+</UL>
+According to these criteria, TLSH rates well:
+<UL>
+	<LI> 1. TLSH has been evaluated a number of times for peer reviewed conferences, and it rates very well.
+	<LI> 2. Robustness to adversarial attack is an area where TLSH excels in comparison to other fuzzy hashing schemes.
+		We will discuss in further detail in the coming weeks.
+	<LI> 3. The time to calculate the TLSH digest is very fast. You can see timing compirison at
+		<A HREF=https://github.com/trendmicro/tlsh/blob/master/Change_History.md>Version 3.11.0</A> of the Change History.
+	<LI> 4. TLSH is very fast at nearest neighbor search at scale.
+		This is due to TLSH being a distance metric (as per the mathematical definition) and hence has logarithmic search times.
+		Note: other fuzzy hashes such as SDHASH and SSDEEP do not have this property
+		We will discuss further below.
+	<LI> 5. Large scale clustering is another area where TLSH excels. The logarithmic search can be used to perform
+		hierarchical clustering in O(N log N) time.
+	<LI> 6. TLSH has a fixed length 70 hex character digest with a "T1" prefix versioning string at the start for a total of 72 characters.
+</UL>
+
+TLSH is different from other fuzzy hashes in the following ways:
+<UL>
+	<LI> Nearly all fuzzy hashes use a similarity score.  TLSH uses a distance score.
+		Using a distance score, and in particular obeying the triangle inequality (and hence being a distance metric) enables
+		fast nearest neighbour search and scalable clustering.
+	<LI> Nearly all fuzzy hashes use byte sequences (ngram like).  TLSH uses a k-skip ngrams (ngrams with holes in them).
+		Using k-skip ngrams significantly reduces the attack surface of the hash.
+</UL>
+
+<H2>Fast Nearest Neighbour Search and Scalable Clustering</H2>
+
+The key to nearly all fast search methods is to use an index which will typically take the form of a binary tree.
+An example TLSH tree is shown in figure 1.
+<TABLE BORDER=1> <TR> <TD>
+	<IMG SRC=papersDir/eg.png HEIGHT=348 WIDTH=632> <BR>
+	<CENTER> Figure 1. A TLSH Tree </CENTER>
+</TD> </TR> </TABLE>
+<P>
+Each node has a TLSH node and a distance threshold.
+The meaning of the root node from Figure 1 (with contents TLSH_1 and threshold T=225) is:
+<UL>
+	<LI> All TLSH values in the left subtree have a distance < 225 from TLSH_1
+	<LI> All TLSH values in the right subtree have a distance >= 225 from TLSH_1
+</UL>
+If we are searching for the nearest neighbour for a search TLSH value (S), then
+we can traverse a TLSH tree and find a leaf using the Search algorithm in Figure 2
+(from <A HREF=papersDir/COINS_2020_camera_ready.pdf>HAC-T and fast search for similarity in security</A>).
+<TABLE BORDER=1> <TR> <TD>
+	<IMG SRC=papersDir/Algorithm3_COINS.png HEIGHT=410 WIDTH=629> <BR>
+	<CENTER> Figure 2. Search Algorithm </CENTER>
+</TD> </TR> </TABLE>
+<P>
+As described in <A HREF=papersDir/COINS_2020_camera_ready.pdf>that paper</A>, there are 2 approaches to using TLSH for fast search:
+<OL>
+	<LI> A backtrack policy can be used to guarantee that the closest item(s) in the tree are found; or
+	<LI> A forest of such trees can be built to arrive at an approximate nearest neighbour search. Experiments have
+		found that using forests with of the order of 10 trees achieves good results.
+</OL>
+
+<H3>Scalable Clustering</H3>
+
+Consider clustering a data set D with N samples in it with a Cluster Distance CDist
+(CDist means that we will merge clusters which have items within distance CDist of each other).
+<P>
+Normally hierarchical clustering is an infeasible approach to use for clustering since it requires a pre-processing step of
+finding the closest neighbour for each item which is O(N<sup>2</sup>). <BR>
+It is possible to use the fast search capabilities of a TLSH tree (or forest) to do fast hierarchical clustering.
+Using the TLSH tree, we can find the closest neighbours in O(log N).
+Thus to find the closest item for all N items is a O(N log N) operation which scales well to large datasets. <BR>
+We have called the algorithm to do this <A HREF=papersDir/COINS_2020_camera_ready.pdf>HAC-T</A> and it is shown in Figure 3 below.
+
+<TABLE BORDER=1> <TR> <TD>
+	<IMG SRC=papersDir/Algorithm4_COINS.png HEIGHT=669 WIDTH=624> <BR>
+	<CENTER> Figure 3. The HAC-T Clustering Algorithm </CENTER>
+</TD> </TR> </TABLE>
+
+<H3>Using trees and the HAC-T algorithm for other Similarity Digests</H3>
+
+The preceeding sections lead us to ask the question, "Why is not a similar approach used for other fuzzy hashes such as SSDEEP and SDHASH?".
+The reason is that (for the vast majority of datasets) similarity measures will identify a small number of items as having a high similarity score
+and everything else has a similarity score of 0 (or the score which defines "not similar").
+So if such similarity based methods are used to build a tree, it will be unbalanced as shown in Figure 4:
+
+<TABLE BORDER=1> <TR> <TD>
+	<IMG SRC=papersDir/unbal.png HEIGHT=503 WIDTH=315> <BR>
+	<CENTER> Figure 4. Similarity measures lead to unbalanced trees </CENTER>
+</TD> </TR> </TABLE>
+<P>
+Once the tree is unbalanced, the search reduces to being like a linear search through a linked list. This is not a scalable solution.
+<P>
+In addition, to really use the capabilities of such a tree for fast search, the criteria being used should be a
+<A TARGET=top HREF=https://en.wikipedia.org/wiki/Metric_(mathematics)>distance metric</A> to enable the use of
+<A TARGET=top HREF=https://en.wikipedia.org/wiki/Vantage-point_tree>Vantage Point Trees</A>.
+
+<H3>But isn't a Similarity Score just a Negative Distance Score?</H3>
+
+In many papers where authors wished to compare and evaluate TLSH with similarity digests such as SSDEEP and SDHASH,
+authors would negate the TLSH distance in an attempt to make the score compatible using functions such as: <BR>
+Similarity(TLSH_1, TLSH_2) = 100 - distance(TLSH_1, TLSH_2)
+and if the Simiarity was negative then treat it as zero.
+<P>
+We suggest that cutting off scores in this way should be avoided (or only used in a careful manner).
+This is because fast search and fast clustering are such valuable capabilities.
+
+<H2>Robustness to Attack</H2>
+
+Coming soon... <BR>
+
+<H2>Appendix Summary of Papers</H2>
 <P>
 <UL>
 	<LI> The <A HREF="https://documents.trendmicro.com/assets/wp/wp-locality-sensitive-hash.pdf">CTC 2013</A>
@@ -49,8 +233,8 @@
 
 <!-- ------------------------------------- START FOOTER ------------------------------------- -->
 <DIV class="footer">
-Copyright &copy; 2013-2020 TrendMicro	<BR>
-Last updated on 18/11/2020.
+Copyright &copy; 2013-2021 TrendMicro	<BR>
+Last updated on 12/4/2021.
 </DIV>
 </BODY>
 </HTML>
