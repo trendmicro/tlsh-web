@@ -128,7 +128,7 @@ According to these criteria, TLSH rates well:
 </UL>
 
 TLSH is different from other fuzzy hashes in the following ways:
-<UL>
+<UL id=fast_search>
 	<LI> Nearly all fuzzy hashes use a similarity score.  TLSH uses a distance score.
 		Using a distance score, and in particular obeying the triangle inequality (and hence being a distance metric) enables
 		fast nearest neighbour search and scalable clustering.
@@ -155,7 +155,7 @@ If we are searching for the nearest neighbour for a search TLSH value (S), then
 we can traverse a TLSH tree and find a leaf using the Search algorithm in Figure 2
 (from <A HREF=papersDir/COINS_2020_camera_ready.pdf>HAC-T and fast search for similarity in security</A>).
 <TABLE BORDER=1> <TR> <TD>
-	<IMG SRC=papersDir/Algorithm3_COINS.png HEIGHT=410 WIDTH=629> <BR>
+	<IMG SRC=papersDir/Algorithm3_COINS.png HEIGHT=273 WIDTH=419> <BR>
 	<CENTER> Figure 2. Search Algorithm </CENTER>
 </TD> </TR> </TABLE>
 <P>
@@ -179,7 +179,7 @@ Thus to find the closest item for all N items is a O(N log N) operation which sc
 We have called the algorithm to do this <A HREF=papersDir/COINS_2020_camera_ready.pdf>HAC-T</A> and it is shown in Figure 3 below.
 
 <TABLE BORDER=1> <TR> <TD>
-	<IMG SRC=papersDir/Algorithm4_COINS.png HEIGHT=669 WIDTH=624> <BR>
+	<IMG SRC=papersDir/Algorithm4_COINS.png HEIGHT=446 WIDTH=416> <BR>
 	<CENTER> Figure 3. The HAC-T Clustering Algorithm </CENTER>
 </TD> </TR> </TABLE>
 
@@ -201,7 +201,7 @@ In addition, to really use the capabilities of such a tree for fast search, the 
 <A TARGET=top HREF=https://en.wikipedia.org/wiki/Metric_(mathematics)>distance metric</A> to enable the use of
 <A TARGET=top HREF=https://en.wikipedia.org/wiki/Vantage-point_tree>Vantage Point Trees</A>.
 
-<H3>But isn't a Similarity Score just a Negative Distance Score?</H3>
+<H3 id=robustness>But isn't a Similarity Score just a Negative Distance Score?</H3>
 
 In many papers where authors wished to compare and evaluate TLSH with similarity digests such as SSDEEP and SDHASH,
 authors would negate the TLSH distance in an attempt to make the score compatible using functions such as: <BR>
@@ -213,7 +213,91 @@ This is because fast search and fast clustering are such valuable capabilities.
 
 <H2>Robustness to Attack</H2>
 
-Coming soon... <BR>
+During the design of TLSH, we made attacking the hash a part of the design process.
+We give more extensive details in 2 papers,
+<UL>
+	<LI> <A HREF=https://documents.trendmicro.com/assets/wp/wp-using-randomization-to-attack-similarity-digests.pdf>Using randomization to attack similarity digests</A>
+	<LI> <A HREF=papersDir/Design_TLSH_2021.pdf>Designing the Elements of a Fuzzy Hashing Scheme</A>
+</UL>
+and will summarise it here.
+<P>
+We considered a range of file types:
+<UL>
+	<LI> text files,
+	<LI> executable files,
+	<LI> source code,
+	<LI> HTML files and
+	<LI> image files.
+</UL>
+We considered modifications which were consistent with these files types.
+So for text files, we looked at changes such as changing the case of letters, changing how lines were split and substituting one word for another.
+For executable files, we considered changes such as changing the ordering of functions, swapping the arrangement of IF statements, and adding NO-OPs.
+For image files, we considered changes such as cropping the image, adding small dots and rotating the image.
+We implemented programs which would automatically modify content in these ways and/or collected data sets where adversaries had used such techniques.
+<P>
+At the high level, we optimised the various parameters of TLSH to be resistant to attack.
+We will now dig deeper to explain this.
+
+<H3>Deep Dive into Robustness</H3>
+
+<H3>Quick review of the design of TLSH</H3>
+
+There are 2 key components for designing a fuzzy hash:
+<OL>
+	<LI> The algorithm to calculate the hash
+	<LI> The form and parameters scoring function that scores the distance between 2 hashes.
+</OL>
+
+<H3>Algorithm to Calculate TLSH</H3>
+The algorithm takes the typical form of a locality sensitive hash.
+It has 3 notable elements:
+<UL>
+	<LI> TLSH uses kskip-ngrams rather than ngram like features;
+	<LI> TLSH uses a 4 valued vector rather than a 2 valued vector; and
+	<LI> TLSH puts the feature counts into a vector with 128 buckets.
+</UL>
+The choice of a 4 valued vector and 128 bucket counts was to optimise a ROC curve.
+<TABLE BORDER=1> <TR> <TD>
+	<IMG SRC=papersDir/ROC_curve.png HEIGHT=393 WIDTH=707> <BR>
+	<CENTER> Figure 5. ROC Curve </CENTER>
+</TD> </TR> </TABLE>
+Note: optimising the parameters using the area under a ROC curve means that the method will work with multiple thresholds
+enabling the fast search described above.
+
+<H4>The Choice of Kskip-ngram</H4>
+
+We chose to use <A HREF=https://en.wikipedia.org/wiki/N-gram#Skip-gram>kskip-ngrams</A> in TLSH because it resulted in an
+overall design which was as accurate an ngram approaches on baseline data, but was far more resistant to attack
+when we applied the automated attack methods
+(as described in <A HREF=papersDir/Design_TLSH_2021.pdf>Designing the Elements of a Fuzzy Hashing Scheme</A>).
+we also analysed the computational cost of using kskip-ngrams which grows very quickly as k and n grow.
+We determined that n=5 and k=2 resulted in an overall design which is both computationally efficient and highly resistant to attack.
+The resultant features consist of triplets of bytes out of a window of size 5 (features with holes in them) results in an overall design where
+the impact of minor changes to bytes is reflected in only minor changes in score.
+
+<H3>The Scoring Function</H3>
+
+<H4>The Form of the Scoring Function</H4>
+We choose a scoring function which takes the form of a distance metric and not similarity measure so that
+we could achieve the fast search and scalable clustering as described above.
+
+<H4>The Parameters of the Scoring Function</H4>
+
+The scoring function has quite a few parameters which people have questioned why they take the value they do
+(such as the length scoring parameter of 12 and the various distance parmeters). <BR>
+We choose the parameters of the scoring function (such as 12 for the score per length difference) based on
+optimising the ROC curve shown above in Figure 5 above.
+(further details in <A HREF=papersDir/Design_TLSH_2021.pdf>this paper</A>).
+
+<H3>Conclusion</H3>
+
+TLSH was designed based on the criteria at the top of this article.
+<UL>
+	<LI> Most parameters were selected to optimise (1) accuracy;
+	<LI> Kskip-ngrams were selected to make the scheme (2) robust to attack;
+	<LI> We selected a distance metric and used an AUC-ROC optimisation procedure to give us 
+		(4) fast nearest neighbor search and (5) scalable clustering.
+</UL>
 
 <H2>Appendix Summary of Papers</H2>
 <P>
@@ -235,7 +319,7 @@ Coming soon... <BR>
 <!-- ------------------------------------- START FOOTER ------------------------------------- -->
 <DIV class="footer">
 Copyright &copy; 2013-2021 TrendMicro	<BR>
-Last updated on 12/4/2021.
+Last updated on 14/4/2021.
 </DIV>
 </BODY>
 </HTML>
